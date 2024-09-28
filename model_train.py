@@ -20,8 +20,8 @@ transform = transforms.Compose([
 
 images = ImageDataset(root_dir=root, transform=transform)
 num_images = len(images)
-train_num = num_images * 0.9
-val_num = num_images * 0.05
+train_num = int(num_images * 0.9)
+val_num = int(num_images * 0.05)
 test_num = num_images - train_num - val_num
 
 train_data, val_data, test_data = torch.utils.data.random_split(images, [train_num, val_num, test_num])
