@@ -71,6 +71,9 @@ transform = transforms.Compose([
 ])
 
 app = FastAPI()
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the Face Recognition API"}
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -214,6 +217,7 @@ async def face_recognition(door_number, file: UploadFile = File(...), token: str
     mlflow.log_param('Action', action)
     mlflow.end_run()
     return action
+
 #     return StreamingResponse(
 #     img_byte_arr,
 #     media_type="image/jpeg",
