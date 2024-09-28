@@ -22,7 +22,7 @@ COPY ./main.py /code/main.py
 # Copy the models directory into the working directory
 COPY ./models /code/models
 
-
+EXPOSE 8000
 # ENV MLFLOW_TRACKING_USERNAME=ignatiusboadi
 # ENV MLFLOW_TRACKING_PASSWORD=67ea7e8b48b9a51dd1748b8bb71906cc5806eb09
 ENV MLFLOW_TRACKING_URI=https://dagshub.com/ignatiusboadi/mlops-tasks.mlflow
