@@ -1,8 +1,11 @@
+import dagshub
+import mlflow
 import os
 import torch
 import timm
 import torchmetrics
 from images_dataset import ImageDataset, class_mapping
+import time
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch.nn import CrossEntropyLoss
@@ -11,6 +14,24 @@ from tqdm import tqdm
 
 
 def main():
+    dagshub.init(repo_owner='ignatiusboadi', repo_name='mlops-tasks', mlflow=True)
+    os.environ['MLFLOW_TRACKING_USERNAME'] = 'ignatiusboadi'
+    os.environ['MLFLOW_TRACKING_PASSWORD'] = '67ea7e8b48b9a51dd1748b8bb71906cc5806eb09'
+    os.environ['MLFLOW_TRACKING_URI'] = 'https://dagshub.com/ignatiusboadi/mlops-tasks.mlflow'
+
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+    mlflow.set_experiment("Celebrity-face-recognition-retraining")
+
+    def start_or_get_run():
+        if mlflow.active_run() is None:
+            mlflow.start_run()
+        else:
+            print(f"Active run with UUID {mlflow.active_run().info.run_id} already exists")
+
+    def end_active_run():
+        if mlflow.active_run() is not None:
+            mlflow.end_run()
+
     root = 'hollywood_data'
 
     mean, std, im_size = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225], 224
@@ -20,6 +41,7 @@ def main():
         transforms.Normalize(mean=mean, std=std)
     ])
 
+    start_time = time.time()
     images = ImageDataset(root_dir=root, transform=transform)
     num_images = len(images)
     train_num = int(num_images * 0.9)
@@ -28,7 +50,7 @@ def main():
 
     batch_size = 32
     num_workers = 4
-    # lr = 3e-4
+    l_rate = 3e-4
     epochs = 10
 
     train_data, val_data, test_data = torch.utils.data.random_split(images, [train_num, val_num, test_num])
@@ -55,7 +77,7 @@ def main():
         epoch_f1 += f1_score(preds, gts).item()
         return loss, epoch_loss, epoch_acc, epoch_f1
 
-    rexnet_model, epochs, device, loss_fn, optimizer = train_setup(rexnet_model, epochs)
+    rexnet_model, epochs, device, loss_fn, optimizer = train_setup(rexnet_model, epochs, l_rate)
 
     f1_score = torchmetrics.F1Score(task="multiclass", num_classes=len(classes)).to(device)
     save_prefix, save_dir = "faces", "saved_models"
@@ -64,6 +86,15 @@ def main():
     best_loss = float("inf")
     threshold, not_improved, patience = 0.01, 0, 5
     train_losses, val_losses, train_accs, val_accs, train_f1s, val_f1s = [], [], [], [], [], []
+
+    end_active_run()
+    start_or_get_run()
+
+    mlflow.log_param('epochs', epochs)
+    mlflow.log_param('learning rate', l_rate)
+    mlflow.log_param('training data size', train_num)
+    mlflow.log_param('test data size', test_num)
+    mlflow.log_param('validation data size', val_num)
 
     for epoch in range(epochs):
         epoch_loss, epoch_acc, epoch_f1 = 0, 0, 0
@@ -112,6 +143,7 @@ def main():
             if val_loss_to_track < (best_loss - threshold):
                 os.makedirs(save_dir, exist_ok=True)
                 best_loss = val_loss_to_track
+
                 torch.save(rexnet_model.state_dict(), f"{save_dir}/{save_prefix}_best_model.pth")
             else:
                 not_improved += 1
@@ -119,6 +151,16 @@ def main():
                 if not_improved == patience:
                     print(f"Stopping training after {patience} epochs without improvement.")
                     break
+
+    execution_time = time.time() - start_time
+    mlflow.log_metric('training loss', tr_loss_to_track)
+    mlflow.log_metric('training accuracy', tr_acc_to_track)
+    mlflow.log_metric('training F1', tr_f1_to_track)
+    mlflow.log_metric('validation loss', best_loss)
+    mlflow.log_metric('validation accuracy', val_acc_to_track)
+    mlflow.log_metric('validation F1', val_f1_to_track)
+    mlflow.log_metric('Number of epochs without improvement', not_improved)
+    mlflow.log_metric("execution_time", execution_time)
 
 
 if __name__ == '__main__':
