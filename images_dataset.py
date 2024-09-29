@@ -5,14 +5,19 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-class_mapping = {
-    0: 'Angelina Jolie', 1: 'Brad Pitt', 2: 'Denzel Washington',
-    3: 'Hugh Jackman', 4: 'Jennifer Lawrence', 5: 'Johnny Depp',
-    6: 'Kate Winslet', 7: 'Leonardo DiCaprio', 8: 'Megan Fox',
-    9: 'Natalie Portman', 10: 'Nicole Kidman', 11: 'Robert Downey Jr',
-    12: 'Sandra Bullock', 13: 'Scarlett Johansson', 14: 'Tom Cruise',
-    15: 'Tom Hanks', 16: 'Will Smith'
-}
+# class_mapping = {
+#     0: 'Angelina Jolie', 1: 'Brad Pitt', 2: 'Denzel Washington',
+#     3: 'Hugh Jackman', 4: 'Jennifer Lawrence', 5: 'Johnny Depp',
+#     6: 'Kate Winslet', 7: 'Leonardo DiCaprio', 8: 'Megan Fox',
+#     9: 'Natalie Portman', 10: 'Nicole Kidman', 11: 'Robert Downey Jr',
+#     12: 'Sandra Bullock', 13: 'Scarlett Johansson', 14: 'Tom Cruise',
+#     15: 'Tom Hanks', 16: 'Will Smith'
+# }
+
+class_mapping = {'Angelina Jolie': 0, 'Brad Pitt': 1, 'Denzel Washington': 2, 'Hugh Jackman': 3, 'Jennifer Lawrence': 4,
+                 'Johnny Depp': 5, 'Kate Winslet': 6, 'Leonardo DiCaprio': 7, 'Megan Fox': 8, 'Natalie Portman': 9,
+                 'Nicole Kidman': 10, 'Robert Downey Jr': 11, 'Sandra Bullock': 12, 'Scarlett Johansson': 13,
+                 'Tom Cruise': 14, 'Tom Hanks': 15, 'Will Smith': 16}
 
 
 class ImageDataset(Dataset):
