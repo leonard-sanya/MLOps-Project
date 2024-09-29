@@ -118,3 +118,7 @@ def main():
                 if not_improved == patience:
                     print(f"Stopping training after {patience} epochs without improvement.")
                     break
+
+
+if __name__ == '__main__':
+    main()
