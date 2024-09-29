@@ -1,0 +1,6 @@
+outs:
+- md5: cf07af7ae954e5c70cc5053d1fd1141b.dir
+  size: 35822759
+  nfiles: 1800
+  hash: md5
+  path: hollywood_data

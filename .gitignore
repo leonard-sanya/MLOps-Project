@@ -4,3 +4,5 @@
 .env
 .pyc
 *__pycache__
+/hollywood_data
+/saved_models
