@@ -24,5 +24,11 @@ train_num = int(num_images * 0.9)
 val_num = int(num_images * 0.05)
 test_num = num_images - train_num - val_num
 
+batch_size = 32
+num_workers = 4
+
 train_data, val_data, test_data = torch.utils.data.random_split(images, [train_num, val_num, test_num])
+train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
