@@ -44,7 +44,8 @@ def main():
         return batch[0].to(device_type), batch[1].to(device_type)
 
     def train_setup(model, num_epochs, lr=3e-4):
-        return model.to("cuda").train(), num_epochs, "cuda", CrossEntropyLoss(), Adam(params=model.parameters(), lr=lr)
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        return model.to(device).train(), num_epochs, device, CrossEntropyLoss(), Adam(params=model.parameters(), lr=lr)
 
     def get_metrics(model, ims, gts, loss_fn, epoch_loss, epoch_acc, epoch_f1, f1_score):
         preds = model(ims)
