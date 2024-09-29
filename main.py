@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status,Header
+from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import StreamingResponse
 from datetime import datetime, timedelta, timezone
@@ -23,7 +23,6 @@ import timm
 import torchvision.transforms as transforms
 
 import pandas as pd
-
 
 # JWT settings
 SECRET_KEY = "fdb3e44ba75f4d770ee8de98e488bc3ebcf64dc3066c8140a1ae620c30964454"  # Replace with your own secret key
@@ -66,17 +65,19 @@ model.to(device)
 
 # Define image transformation for classification
 transform = transforms.Compose([
-    transforms.Resize((224, 224)),  
+    transforms.Resize((224, 224)),
     transforms.ToTensor(),
 ])
 
 app = FastAPI()
+
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Face Recognition API"}
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 dagshub.init(repo_owner='ignatiusboadi', repo_name='mlops-tasks', mlflow=True)
 
@@ -169,13 +170,13 @@ async def face_recognition(door_number, file: UploadFile = File(...), token: str
         font_path = "/Library/Fonts/Arial.ttf"  # Update this path according to your system
         font = ImageFont.truetype(font_path, size=24)
     except IOError:
-        font = ImageFont.load_default()  
+        font = ImageFont.load_default()
 
-    # Process only if faces are detected
+        # Process only if faces are detected
     draw = ImageDraw.Draw(image)
     for box in results[0].boxes:
-        x1, y1, x2, y2 = map(int, box.xyxy[0])  
-        
+        x1, y1, x2, y2 = map(int, box.xyxy[0])
+
         # Crop the detected face from the image
         face_image = image.crop((x1, y1, x2, y2))
         face_tensor = transform(face_image).unsqueeze(0).to(device)
@@ -183,9 +184,9 @@ async def face_recognition(door_number, file: UploadFile = File(...), token: str
         with torch.no_grad():
             # Get the raw model output (logits)
             output = model(face_tensor)
-            
-            output = torch.exp(output - torch.max(output))  
-            output = output / output.sum(dim=1, keepdim=True) 
+
+            output = torch.exp(output - torch.max(output))
+            output = output / output.sum(dim=1, keepdim=True)
             predicted_class = torch.argmax(output, dim=1).item()
             mlflow.log_param('model_output', class_mapping.get(predicted_class))
             confidence, _ = torch.max(output, dim=1)
@@ -226,5 +227,3 @@ async def face_recognition(door_number, file: UploadFile = File(...), token: str
 #         "X-Confidence": str(confidence)
 #     }
 # )
-
-

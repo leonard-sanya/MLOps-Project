@@ -2,7 +2,7 @@ import os
 import torch
 import timm
 import torchmetrics
-from images_dataset import ImageDataset
+from images_dataset import ImageDataset, class_mapping
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from torch.nn import CrossEntropyLoss
@@ -31,4 +31,21 @@ train_data, val_data, test_data = torch.utils.data.random_split(images, [train_n
 train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+
+classes = sorted(class_mapping.keys())
+
+model = timm.create_model("rexnet_150", pretrained=True, num_classes=len(classes))
+
+
+def to_device(batch, device):
+    return batch[0].to(device), batch[1].to(device)
+
+
+def get_metrics(model, ims, gts, loss_fn, epoch_loss, epoch_acc, epoch_f1, f1_score):
+    preds = model(ims)
+    loss = loss_fn(preds, gts)
+    epoch_loss += loss.item()
+    epoch_acc += (torch.argmax(preds, dim=1) == gts).sum().item()
+    epoch_f1 += f1_score(preds, gts).item()
+    return loss, epoch_loss, epoch_acc, epoch_f1
 
