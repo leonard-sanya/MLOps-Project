@@ -12,6 +12,8 @@ from torch.nn import CrossEntropyLoss
 from torch.optim import Adam
 from tqdm import tqdm
 
+torch.manual_seed(2024)
+
 
 def main():
     dagshub.init(repo_owner='ignatiusboadi', repo_name='mlops-tasks', mlflow=True)
