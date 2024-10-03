@@ -22,3 +22,4 @@ python-jose
 opencv-python
 numpy
 python-multipart
+bcrypt
