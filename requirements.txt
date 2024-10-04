@@ -15,17 +15,15 @@
 # tqdm~=4.66.5
 # face_recognition
 # mtcnn
-# tensorflow
-# pydantic
-# sqlalchemy
-# python-jose
-# opencv-python
-# numpy
-# python-multipart
-# bcrypt
-
-
-fastapi
+tensorflow
+pydantic
+sqlalchemy
+python-jose
+opencv-python
+numpy
+python-multipart
+bcrypt
+fastapi[standard]
 pydantic
 sqlalchemy
 face-recognition
@@ -36,3 +34,4 @@ mtcnn
 passlib
 python-jose
 uvicorn
+mysql-connector-python
