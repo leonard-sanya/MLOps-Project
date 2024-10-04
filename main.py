@@ -1,6 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Form
 from mysql.connector import connect
-from sqlalchemy import create_engine, Column, Integer, String, LargeBinary
+from sqlalchemy import create_engine, Column, Integer, String, LargeBinary, INT
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
@@ -59,6 +59,7 @@ class User(Base):
     email = Column(String(35), unique=True, index=True)
     password = Column(String(100))
     face_encoding = Column(LargeBinary)
+    is_admin = Column(INT)
 
 
 Base.metadata.create_all(bind=engine)
@@ -69,7 +70,8 @@ class UserCreate(BaseModel):
     email: str
     password: str
     face_encoding: bytes
-    is_admin: int 
+    is_admin: int
+
 
 class UserLogin(BaseModel):
     username: str
@@ -112,34 +114,34 @@ def decode_token(token: str) -> str:
 def create_admin_user():
     db: Session = SessionLocal()
     admin_username = "admin"
-    admin_password = "admin_password"  
+    admin_password = "admin_password"
 
     db_user = db.query(User).filter(User.username == admin_username).first()
     if not db_user:
-        hashed_password = hash_password(admin_password)  
+        hashed_password = hash_password(admin_password)
         admin_user = User(
             username=admin_username,
-            email="admin@example.com", 
+            email="admin@example.com",
             password=hashed_password,
-            is_admin=1  
+            is_admin=1
         )
         db.add(admin_user)
         db.commit()
         print("Admin user created successfully.")
+
 
 create_admin_user()
 
 
 @app.post("/enroll")
 async def enroll(
-    username: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
-    is_admin: int = Form(0)  ):
-
+        username: str = Form(...),
+        email: str = Form(...),
+        password: str = Form(...),
+        is_admin: int = Form(0)):
     if is_admin == 1:
         raise HTTPException(status_code=403, detail="Admin account cannot be enrolled.")
-    
+
     db: Session = SessionLocal()
     video_capture = None
 
@@ -184,44 +186,35 @@ async def enroll(
             video_capture.release()
         cv2.destroyAllWindows()
 
+
 @app.delete("/unenroll/{username}")
 async def unenroll_user(username: str, token: str = Depends(oauth2_scheme)):
     db: Session = SessionLocal()
     current_user = decode_token(token)
 
     db_user = db.query(User).filter(User.username == current_user).first()
-    if not db_user or db_user.is_admin != 1:  
+    if not db_user or db_user.is_admin != 1:
         raise HTTPException(status_code=403, detail="Not authorized to perform this action")
 
     user_to_unenroll = db.query(User).filter(User.username == username).first()
     if not user_to_unenroll:
         raise HTTPException(status_code=404, detail="User not found")
 
-
-    user_to_unenroll.face_encoding = None  
-
-    db.commit() 
-
-    user_dir = os.path.join(MAIN_IMAGE_DIR, username)
-    if os.path.exists(user_dir):
-     
-        shutil.rmtree(user_dir)  
-
+    user_to_unenroll.face_encoding = None
+    db.commit()
     return {"message": f"{username} has been unenrolled successfully"}
-
 
 
 @app.put("/user/{username}")
 async def update_user(
-    username: str,
-    email: str = Form(...),
-    password: str = Form(None), 
-    token: str = Depends(oauth2_scheme)
+        username: str,
+        email: str = Form(...),
+        password: str = Form(None),
+        token: str = Depends(oauth2_scheme)
 ):
     db: Session = SessionLocal()
     current_user = decode_token(token)
 
-   
     db_user = db.query(User).filter(User.username == current_user).first()
     if not db_user or db_user.is_admin != 1:
         raise HTTPException(status_code=403, detail="Not authorized to perform this action")
@@ -229,20 +222,13 @@ async def update_user(
     user_to_update = db.query(User).filter(User.username == username).first()
     if not user_to_update:
         raise HTTPException(status_code=404, detail="User not found")
-    
 
     user_to_update.username = username
-
- 
     user_to_update.email = email
-
- 
     if password:
         user_to_update.password = hash_password(password)  # Hash new password
 
     db.commit()
-
-
     return {
         "message": f"User {username} updated successfully",
         "user": {
@@ -251,6 +237,7 @@ async def update_user(
             "is_admin": user_to_update.is_admin
         }
     }
+
 
 #################################################################################
 # USER LOG IN
@@ -304,9 +291,9 @@ async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
 
     for face_encoding in face_encodings:
         for user in users:
-           
+
             if user.face_encoding is None:
-                continue  
+                continue
 
             stored_encoding = np.frombuffer(user.face_encoding, dtype=np.float64)
             matches = face_recognition.compare_faces([stored_encoding], face_encoding)
