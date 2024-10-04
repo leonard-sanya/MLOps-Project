@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import os
 import cv2
-# import face_recognition
+import face_recognition
 import time
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
