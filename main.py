@@ -1,23 +1,13 @@
-<<<<<<< HEAD
 import os
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
-=======
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Form
->>>>>>> 99911f91f3a8faa4427d0ccd908a0f179c7a64e5
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, LargeBinary, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-from dotenv import load_dotenv
+import face_recognition
 import cv2
 import shutil
 import numpy as np
-<<<<<<< HEAD
-=======
-import os
-import cv2
-# import face_recognition
->>>>>>> 99911f91f3a8faa4427d0ccd908a0f179c7a64e5
 import time
 from fastapi.responses import StreamingResponse
 from io import BytesIO
@@ -28,21 +18,9 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 
-load_dotenv()
-ip_address = os.getenv('IP_ADDRESS')
-db_name = os.getenv('DB_NAME')
-db_username = os.getenv('DB_USERNAME')
-db_password = os.getenv('DB_PASSWORD')
-connection_name = os.getenv('CONNECTION_NAME')
-
-
-<<<<<<< HEAD
-DATABASE_URL = "sqlite:///./test.db"  
-=======
 app = FastAPI()
 
-DATABASE_URL = "sqlite:///./test.db"
->>>>>>> 99911f91f3a8faa4427d0ccd908a0f179c7a64e5
+DATABASE_URL = "sqlite:///./test.db"  
 
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
@@ -54,12 +32,9 @@ SECRET_KEY = "your-secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-<<<<<<< HEAD
 # Main directory for storing images
 MAIN_IMAGE_DIR = "./enrolled_images"
 os.makedirs(MAIN_IMAGE_DIR, exist_ok=True)
-=======
->>>>>>> 99911f91f3a8faa4427d0ccd908a0f179c7a64e5
 
 class User(Base):
     __tablename__ = "users"
@@ -68,13 +43,8 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     password = Column(String)
-<<<<<<< HEAD
     face_encoding = Column(LargeBinary)  
     is_admin = Column(Integer)  # 1 for admin, 0 for normal user
-=======
-    face_encoding = Column(LargeBinary)
-
->>>>>>> 99911f91f3a8faa4427d0ccd908a0f179c7a64e5
 
 # Drop the existing users table if it exists
 with engine.connect() as connection:
@@ -90,7 +60,6 @@ class UserCreate(BaseModel):
     face_encoding: bytes
     is_admin: int  # 1 for admin, 0 for normal user
 
-
 class UserLogin(BaseModel):
     username: str
     password: str
@@ -99,12 +68,10 @@ class UserLogin(BaseModel):
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
-
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
 
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     to_encode = data.copy()
@@ -116,7 +83,6 @@ def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-
 def decode_token(token: str) -> str:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -127,7 +93,6 @@ def decode_token(token: str) -> str:
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-<<<<<<< HEAD
 # Check if the admin user already exists
 def create_admin_user():
     db: Session = SessionLocal()
@@ -156,25 +121,13 @@ async def enroll(
     email: str = Form(...),
     password: str = Form(...),
     is_admin: int = Form(0)  # Default to normal user (0)
-=======
-
-#################################################################################
-# USER ENROLLMENT
-#################################################################################
-
-@app.post("/enroll")
-async def enroll(
-        username: str = Form(...),
-        email: str = Form(...),
-        password: str = Form(...)
->>>>>>> 99911f91f3a8faa4427d0ccd908a0f179c7a64e5
 ):
     # Prevent admin from being enrolled
     if is_admin == 1:
         raise HTTPException(status_code=403, detail="Admin account cannot be enrolled.")
     
     db: Session = SessionLocal()
-    video_capture = None
+    video_capture = None  
 
     try:
         db_user = db.query(User).filter(User.username == username).first()
@@ -183,7 +136,7 @@ async def enroll(
 
         video_capture = cv2.VideoCapture(0)
 
-        if not video_capture.isOpened():
+        if not video_capture.isOpened():  
             raise HTTPException(status_code=500, detail="Could not access the camera.")
 
         print("Please focus on the camera. The image will be captured in 5 seconds...")
@@ -203,7 +156,7 @@ async def enroll(
 
         face_encoding = face_encodings[0]
 
-        hashed_password = hash_password(password)
+        hashed_password = hash_password(password)  
 
         user = User(username=username, email=email, password=hashed_password, face_encoding=face_encoding.tobytes(), is_admin=is_admin)
         db.add(user)
@@ -299,7 +252,7 @@ async def update_user(
     }
 
 #################################################################################
-# USER LOG IN
+                    # USER LOG IN
 #################################################################################
 
 @app.post("/token")
@@ -322,7 +275,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 
 #################################################################################
-# USER FACE RECOGNITION
+                    # USER FACE RECOGNITION
 #################################################################################
 @app.post("/face_recognition")
 async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
@@ -344,7 +297,7 @@ async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=400, detail="No faces detected in the image.")
 
     db: Session = SessionLocal()
-    users = db.query(User).all()
+    users = db.query(User).all()  
 
     recognized_users = []
 
@@ -370,10 +323,10 @@ async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
     img_with_dets = frame.copy()
     min_conf = 0.9
 
-    box_color = (255, 0, 0)
-    box_thickness = 3
-    dot_color = (0, 255, 0)
-    dot_size = 6
+    box_color = (255, 0, 0)  
+    box_thickness = 3        
+    dot_color = (0, 255, 0)  
+    dot_size = 6            
 
     for det in detections:
         if det['confidence'] >= min_conf:
@@ -382,23 +335,28 @@ async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
 
             cv2.rectangle(img_with_dets, (x, y), (x + width, y + height), box_color, box_thickness)
 
-            cv2.circle(img_with_dets, keypoints['left_eye'], dot_size, dot_color, -1)
-            cv2.circle(img_with_dets, keypoints['right_eye'], dot_size, dot_color, -1)
-            cv2.circle(img_with_dets, keypoints['nose'], dot_size, dot_color, -1)
-            cv2.circle(img_with_dets, keypoints['mouth_left'], dot_size, dot_color, -1)
-            cv2.circle(img_with_dets, keypoints['mouth_right'], dot_size, dot_color, -1)
+            cv2.circle(img_with_dets, keypoints['left_eye'], dot_size, dot_color, -1)  
+            cv2.circle(img_with_dets, keypoints['right_eye'], dot_size, dot_color, -1)  
+            cv2.circle(img_with_dets, keypoints['nose'], dot_size, dot_color, -1)       
+            cv2.circle(img_with_dets, keypoints['mouth_left'], dot_size, dot_color, -1)  
+            cv2.circle(img_with_dets, keypoints['mouth_right'], dot_size, dot_color, -1) 
+
 
     _, img_encoded = cv2.imencode('.jpg', cv2.cvtColor(img_with_dets, cv2.COLOR_RGB2BGR))
     img_bytes = BytesIO(img_encoded.tobytes())
 
+
     video_capture.release()
     cv2.destroyAllWindows()
 
-    return StreamingResponse(img_bytes, media_type="image/jpeg",
-                             headers={"X-Recognized-Users": ', '.join(recognized_users)})
+    return StreamingResponse(img_bytes, media_type="image/jpeg", headers={"X-Recognized-Users": ', '.join(recognized_users)})
+
+
+
+
 
 #################################################################################
-# PREVIOUS MAIN.PY FILE
+                    # PREVIOUS MAIN.PY FILE
 #################################################################################
 
 # from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status, Header
@@ -620,3 +578,5 @@ async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
 #     mlflow.log_param('Action', action)
 #     mlflow.end_run()
 #     return action
+
+
