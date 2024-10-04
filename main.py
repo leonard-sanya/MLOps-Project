@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Form
+from mysql.connector import connect, cursor
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
@@ -23,16 +24,24 @@ from datetime import datetime, timedelta, timezone
 import cv2
 
 load_dotenv()
-ip_address = os.getenv('IP_ADDRESS')
+db_host = os.getenv('IP_ADDRESS')
 db_name = os.getenv('DB_NAME')
 db_username = os.getenv('DB_USERNAME')
 db_password = os.getenv('DB_PASSWORD')
 connection_name = os.getenv('CONNECTION_NAME')
 
+conn = connect(
+    host=db_host,
+    user=db_username,
+    password=db_password,
+    database=db_name
+)
+
+cursor = conn.cursor()
 
 app = FastAPI()
 
-DATABASE_URL = "sqlite:///./test.db"
+DATABASE_URL = f"mysql+mysqldb://{db_username}:{db_password}@{db_host}:3306/{db_name}"
 
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
@@ -49,9 +58,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    password = Column(String)
+    username = Column(String(10), unique=True, index=True)
+    email = Column(String(35), unique=True, index=True)
+    password = Column(String(16))
     face_encoding = Column(LargeBinary)
 
 
