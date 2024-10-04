@@ -60,7 +60,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(10), unique=True, index=True)
     email = Column(String(35), unique=True, index=True)
-    password = Column(String(16))
+    password = Column(String(100))
     face_encoding = Column(LargeBinary)
 
 
