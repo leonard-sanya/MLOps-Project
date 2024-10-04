@@ -1,25 +1,38 @@
-fastapi~=0.115.0
-pillow~=10.4.0
-ultralytics~=8.2.101
-timm~=1.0.9
-PyJWT~=2.9.0
-passlib~=1.7.4
-torchvision~=0.19.1
-dagshub~=0.3.36
-mlflow~=2.16.2
-pandas~=2.2.3
-evidently~=0.4.37
-huggingface-hub~=0.25.1
-torch~=2.4.1
-torchmetrics~=1.4.2
-tqdm~=4.66.5
-face_recognition
-mtcnn
-tensorflow
+# fastapi~=0.115.0
+# pillow~=10.4.0
+# ultralytics~=8.2.101
+# timm~=1.0.9
+# PyJWT~=2.9.0
+# passlib~=1.7.4
+# torchvision~=0.19.1
+# dagshub~=0.3.36
+# mlflow~=2.16.2
+# pandas~=2.2.3
+# evidently~=0.4.37
+# huggingface-hub~=0.25.1
+# torch~=2.4.1
+# torchmetrics~=1.4.2
+# tqdm~=4.66.5
+# face_recognition
+# mtcnn
+# tensorflow
+# pydantic
+# sqlalchemy
+# python-jose
+# opencv-python
+# numpy
+# python-multipart
+# bcrypt
+
+
+fastapi
 pydantic
 sqlalchemy
-python-jose
+face-recognition
 opencv-python
 numpy
-python-multipart
-bcrypt
+Pillow
+mtcnn
+passlib
+python-jose
+uvicorn

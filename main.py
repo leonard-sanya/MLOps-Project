@@ -32,7 +32,7 @@ SECRET_KEY = "your-secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Main directory for storing images
+
 MAIN_IMAGE_DIR = "./enrolled_images"
 os.makedirs(MAIN_IMAGE_DIR, exist_ok=True)
 
@@ -44,13 +44,12 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     password = Column(String)
     face_encoding = Column(LargeBinary)  
-    is_admin = Column(Integer)  # 1 for admin, 0 for normal user
+    is_admin = Column(Integer)  
 
-# Drop the existing users table if it exists
 with engine.connect() as connection:
     connection.execute(text("DROP TABLE IF EXISTS users"))
 
-# Create the new schema
+
 Base.metadata.create_all(bind=engine)
 
 class UserCreate(BaseModel):
@@ -58,7 +57,7 @@ class UserCreate(BaseModel):
     email: str
     password: str
     face_encoding: bytes
-    is_admin: int  # 1 for admin, 0 for normal user
+    is_admin: int 
 
 class UserLogin(BaseModel):
     username: str
@@ -93,20 +92,20 @@ def decode_token(token: str) -> str:
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-# Check if the admin user already exists
+
 def create_admin_user():
     db: Session = SessionLocal()
     admin_username = "admin"
-    admin_password = "admin_password"  # Set your desired admin password here
+    admin_password = "admin_password"  
 
     db_user = db.query(User).filter(User.username == admin_username).first()
     if not db_user:
-        hashed_password = hash_password(admin_password)  # Hash the admin password
+        hashed_password = hash_password(admin_password)  
         admin_user = User(
             username=admin_username,
-            email="admin@example.com",  # Change as needed
+            email="admin@example.com", 
             password=hashed_password,
-            is_admin=1  # Set as admin
+            is_admin=1  
         )
         db.add(admin_user)
         db.commit()
@@ -120,9 +119,8 @@ async def enroll(
     username: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
-    is_admin: int = Form(0)  # Default to normal user (0)
-):
-    # Prevent admin from being enrolled
+    is_admin: int = Form(0)  ):
+
     if is_admin == 1:
         raise HTTPException(status_code=403, detail="Admin account cannot be enrolled.")
     
@@ -163,11 +161,10 @@ async def enroll(
         db.commit()
         db.refresh(user)
 
-        # Create a directory for the user
         user_dir = os.path.join(MAIN_IMAGE_DIR, username)
         os.makedirs(user_dir, exist_ok=True)
 
-        # Save the captured image
+
         img_path = os.path.join(user_dir, "enrolled_image.jpg")
         cv2.imwrite(img_path, frame)
 
@@ -178,49 +175,44 @@ async def enroll(
             video_capture.release()
         cv2.destroyAllWindows()
 
-
-# Add admin routes to delete and update users' information
-
-# Unenrollment endpoint for admin users
 @app.delete("/unenroll/{username}")
 async def unenroll_user(username: str, token: str = Depends(oauth2_scheme)):
     db: Session = SessionLocal()
     current_user = decode_token(token)
 
-    # Check if the current user is admin
     db_user = db.query(User).filter(User.username == current_user).first()
-    if not db_user or db_user.is_admin != 1:  # Ensure admin access
+    if not db_user or db_user.is_admin != 1:  
         raise HTTPException(status_code=403, detail="Not authorized to perform this action")
 
     user_to_unenroll = db.query(User).filter(User.username == username).first()
     if not user_to_unenroll:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Remove the user's face encoding
-    user_to_unenroll.face_encoding = None  # Alternatively, delete the user entry
 
-    db.commit()  # Save changes to the database
+    user_to_unenroll.face_encoding = None  
+
+    db.commit() 
 
     user_dir = os.path.join(MAIN_IMAGE_DIR, username)
     if os.path.exists(user_dir):
-        # Remove the user's directory and all its contents
-        shutil.rmtree(user_dir)  # Delete the user's directory and its contents
+     
+        shutil.rmtree(user_dir)  
 
     return {"message": f"{username} has been unenrolled successfully"}
 
-# update user info
+
 
 @app.put("/user/{username}")
 async def update_user(
     username: str,
     email: str = Form(...),
-    password: str = Form(None),  # Make password optional
+    password: str = Form(None), 
     token: str = Depends(oauth2_scheme)
 ):
     db: Session = SessionLocal()
     current_user = decode_token(token)
 
-    # Check if current user is admin
+   
     db_user = db.query(User).filter(User.username == current_user).first()
     if not db_user or db_user.is_admin != 1:
         raise HTTPException(status_code=403, detail="Not authorized to perform this action")
@@ -229,19 +221,19 @@ async def update_user(
     if not user_to_update:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Update user's name
+
     user_to_update.username = username
 
-    # Update user's email
+ 
     user_to_update.email = email
 
-    # Update password only if it's provided
+ 
     if password:
         user_to_update.password = hash_password(password)  # Hash new password
 
     db.commit()
 
-    # Optionally return the updated user info
+
     return {
         "message": f"User {username} updated successfully",
         "user": {
@@ -303,9 +295,9 @@ async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
 
     for face_encoding in face_encodings:
         for user in users:
-            # Check if face_encoding is not None
+           
             if user.face_encoding is None:
-                continue  # Skip users without face encodings
+                continue  
 
             stored_encoding = np.frombuffer(user.face_encoding, dtype=np.float64)
             matches = face_recognition.compare_faces([stored_encoding], face_encoding)
