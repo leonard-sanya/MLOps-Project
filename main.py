@@ -1,14 +1,11 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Form
-from mysql.connector import connect, cursor
-from pydantic import BaseModel
+from mysql.connector import connect
 from sqlalchemy import create_engine, Column, Integer, String, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
-import cv2
 import numpy as np
 import os
-import cv2
 import face_recognition
 import time
 from sqlalchemy.orm import Session
