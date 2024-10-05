@@ -21,6 +21,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 import cv2
+import yagmail
 
 load_dotenv()
 db_host = os.getenv('IP_ADDRESS')
@@ -147,7 +148,6 @@ async def enroll(
         raise HTTPException(status_code=403, detail="Admin account cannot be enrolled.")
 
     db: Session = SessionLocal()
-    video_capture = None
 
     try:
         db_user = db.query(User).filter(User.username == username).first()
@@ -158,18 +158,6 @@ async def enroll(
         image_stream = io.BytesIO(image_data)
         pil_image = Image.open(image_stream)
         rgb_frame = np.array(pil_image)
-
-        # if not video_capture.isOpened():
-        #     raise HTTPException(status_code=500, detail="Could not access the camera.")
-        #
-        # print("Please focus on the camera. The image will be captured in 5 seconds...")
-        # time.sleep(5)
-        #
-        # ret, frame = video_capture.read()
-        # if not ret:
-        #     raise HTTPException(status_code=500, detail="Could not capture an image.")
-        #
-        # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         face_locations = face_recognition.face_locations(rgb_frame)
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
@@ -188,10 +176,8 @@ async def enroll(
 
         return {"message": "User enrolled successfully"}
 
-    finally:
-        if video_capture is not None and video_capture.isOpened():
-            video_capture.release()
-        cv2.destroyAllWindows()
+    except Exception as e:
+        return {'message': f'{type(e).__name__}'}
 
 
 @app.delete("/unenroll/{username}")
@@ -254,6 +240,7 @@ async def update_user(
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     db: Session = SessionLocal()
     db_user = db.query(User).filter(User.username == form_data.username).first()
+    email = db_user.email
 
     if not db_user:
         raise HTTPException(status_code=400, detail="User not enrolled")
@@ -265,6 +252,14 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     access_token = create_access_token(
         data={"sub": db_user.username}, expires_delta=access_token_expires
     )
+    yag = yagmail.SMTP('ammi.mlops.group1@gmail.com', 'pktwlpqogrkotiyg')
+    message = f'''Dear User,
+                Kindly find below the bearer token for you to access
+                {access_token}
+
+                Kindest regards,
+                Group 1'''
+    yag.send(email, f'Bearer token', message)
 
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -273,74 +268,75 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 # USER FACE RECOGNITION
 #################################################################################
 @app.post("/face_recognition")
-async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
-    video_capture = cv2.VideoCapture(0,cv2.CAP_AVFOUNDATION)
-
-    print("Please focus on the camera. The image will be captured in 5 seconds...")
-    time.sleep(5)
-
-    ret, frame = video_capture.read()
-
-    if not ret:
-        raise HTTPException(status_code=500, detail="Could not access the camera.")
-
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    face_locations = face_recognition.face_locations(rgb_frame)
-    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-
-    if not face_encodings:
-        raise HTTPException(status_code=400, detail="No faces detected in the image.")
-
+async def face_recognition_endpoint(image: UploadFile = File()):
+    # Read the uploaded image file contents
     db: Session = SessionLocal()
+    image_bytes = await image.read()
+
+    # Convert the uploaded image bytes to a numpy array
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    if img is None:
+        raise HTTPException(status_code=400, detail="Invalid image file.")
+
+    # Convert image to RGB format for face recognition
+    rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    # Detect face locations and encodings
+    face_locations = face_recognition.face_locations(rgb_img)
+    face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
+
+    if not face_locations:
+        return {"message": "No face detected in the image."}
+
+    # Query the database to retrieve all users
     users = db.query(User).all()
 
     recognized_users = []
 
     for face_encoding in face_encodings:
         for user in users:
-
             if user.face_encoding is None:
                 continue
 
+            # Load the stored face encoding and compare with the current face encoding
             stored_encoding = np.frombuffer(user.face_encoding, dtype=np.float64)
             matches = face_recognition.compare_faces([stored_encoding], face_encoding)
 
             if matches[0]:
                 recognized_users.append(user.username)
 
-    detector = MTCNN()
-    detections = detector.detect_faces(frame)
+    # Use MTCNN to detect faces in the image
+    # detector = MTCNN()
+    # detections = detector.detect_faces(rgb_img)
+    #
+    # if not detections:
+    #     raise HTTPException(status_code=400, detail="No faces detected in the image.")
+    #
+    # # Draw boxes and keypoints around the faces in the image
+    # img_with_dets = rgb_img.copy()
+    # min_conf = 0.9
+    #
+    # box_color = (255, 0, 0)
+    # box_thickness = 3
+    # dot_color = (0, 255, 0)
+    # dot_size = 6
+    #
+    # for det in detections:
+    #     if det['confidence'] >= min_conf:
+    #         x, y, width, height = det['box']
+    #         keypoints = det['keypoints']
+    #
+    #         cv2.rectangle(img_with_dets, (x, y), (x + width, y + height), box_color, box_thickness)
+    #         cv2.circle(img_with_dets, keypoints['left_eye'], dot_size, dot_color, -1)
+    #         cv2.circle(img_with_dets, keypoints['right_eye'], dot_size, dot_color, -1)
+    #         cv2.circle(img_with_dets, keypoints['nose'], dot_size, dot_color, -1)
+    #         cv2.circle(img_with_dets, keypoints['mouth_left'], dot_size, dot_color, -1)
+    #         cv2.circle(img_with_dets, keypoints['mouth_right'], dot_size, dot_color, -1)
+    #
+    # # Encode the image with detections to JPEG format
+    # _, img_encoded = cv2.imencode('.jpg', cv2.cvtColor(img_with_dets, cv2.COLOR_RGB2BGR))
+    # img_bytes = BytesIO(img_encoded.tobytes())
 
-    if not detections:
-        raise HTTPException(status_code=400, detail="No faces detected in the image.")
-
-    img_with_dets = frame.copy()
-    min_conf = 0.9
-
-    box_color = (255, 0, 0)
-    box_thickness = 3
-    dot_color = (0, 255, 0)
-    dot_size = 6
-
-    for det in detections:
-        if det['confidence'] >= min_conf:
-            x, y, width, height = det['box']
-            keypoints = det['keypoints']
-
-            cv2.rectangle(img_with_dets, (x, y), (x + width, y + height), box_color, box_thickness)
-
-            cv2.circle(img_with_dets, keypoints['left_eye'], dot_size, dot_color, -1)
-            cv2.circle(img_with_dets, keypoints['right_eye'], dot_size, dot_color, -1)
-            cv2.circle(img_with_dets, keypoints['nose'], dot_size, dot_color, -1)
-            cv2.circle(img_with_dets, keypoints['mouth_left'], dot_size, dot_color, -1)
-            cv2.circle(img_with_dets, keypoints['mouth_right'], dot_size, dot_color, -1)
-
-    _, img_encoded = cv2.imencode('.jpg', cv2.cvtColor(img_with_dets, cv2.COLOR_RGB2BGR))
-    img_bytes = BytesIO(img_encoded.tobytes())
-
-    video_capture.release()
-    cv2.destroyAllWindows()
-
-    return StreamingResponse(img_bytes, media_type="image/jpeg",
-                             headers={"X-Recognized-Users": ', '.join(recognized_users)})
-
+    return {'users': recognized_users}
