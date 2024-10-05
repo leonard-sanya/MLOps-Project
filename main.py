@@ -39,6 +39,7 @@ cursor = conn.cursor()
 app = FastAPI()
 
 DATABASE_URL = f"mysql+mysqldb://{db_username}:{db_password}@{db_host}:3306/{db_name}"
+print(db_host)
 
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
@@ -267,7 +268,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 #################################################################################
 @app.post("/face_recognition")
 async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
-    video_capture = cv2.VideoCapture(0)
+    video_capture = cv2.VideoCapture(0,cv2.CAP_AVFOUNDATION)
 
     print("Please focus on the camera. The image will be captured in 5 seconds...")
     time.sleep(5)
