@@ -1,6 +1,11 @@
-# Use a python image as the base
-FROM python:3.10-slim
+FROM python:3.11.5
 
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+    fswebcam \
+    v4l-utils
+
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     cmake \
     build-essential \
@@ -8,7 +13,8 @@ RUN apt-get update && apt-get install -y \
     liblapack-dev \
     libx11-dev \
     libgtk-3-dev \
-    libboost-python-dev
+    libboost-python-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
 WORKDIR /code
@@ -22,6 +28,8 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 # Copy the app directory contents to the working directory
 COPY ./main.py /code/main.py
 
+# Expose port 80
 EXPOSE 80
+
 # Run the FastAPI application using Uvicorn
-CMD ["fastapi", "run", "main.py", "--port", "80"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 80"]
