@@ -4,6 +4,8 @@ from sqlalchemy import create_engine, Column, Integer, String, LargeBinary, INT
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
+import io
 import numpy as np
 import os
 import face_recognition
@@ -37,6 +39,15 @@ conn = connect(
 cursor = conn.cursor()
 
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8050"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 DATABASE_URL = f"mysql+mysqldb://{db_username}:{db_password}@{db_host}:3306/{db_name}"
 
@@ -133,58 +144,46 @@ def create_admin_user():
 create_admin_user()
 
 
+@app.get('/')
+def welcome():
+    return {'message': 'finally connecting'}
+
+
 @app.post("/enroll")
 async def enroll(
         username: str = Form(...),
         email: str = Form(...),
         password: str = Form(...),
-        is_admin: int = Form(0)):
-    if is_admin == 1:
-        raise HTTPException(status_code=403, detail="Admin account cannot be enrolled.")
+        is_admin: int = Form(0),
+        image: UploadFile = File(...)):
 
     db: Session = SessionLocal()
-    video_capture = None
-
     try:
         db_user = db.query(User).filter(User.username == username).first()
         if db_user:
             raise HTTPException(status_code=400, detail="Username already registered")
+        image_data = await image.read()
 
-        video_capture = cv2.VideoCapture(0)
-
-        if not video_capture.isOpened():
-            raise HTTPException(status_code=500, detail="Could not access the camera.")
-
-        print("Please focus on the camera. The image will be captured in 5 seconds...")
-        time.sleep(5)
-
-        ret, frame = video_capture.read()
-        if not ret:
-            raise HTTPException(status_code=500, detail="Could not capture an image.")
-
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image_stream = io.BytesIO(image_data)
+        pil_image = Image.open(image_stream)
+        rgb_frame = np.array(pil_image)
 
         face_locations = face_recognition.face_locations(rgb_frame)
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
         if not face_encodings:
             raise HTTPException(status_code=400, detail="No face detected in the image.")
-
         face_encoding = face_encodings[0]
-
         hashed_password = hash_password(password)
-
-        user = User(username=username, email=email, password=hashed_password, face_encoding=face_encoding.tobytes())
+        user = User(username=username, email=email, password=hashed_password, face_encoding=face_encoding.tobytes(),
+                    is_admin=is_admin)
         db.add(user)
         db.commit()
         db.refresh(user)
 
         return {"message": "User enrolled successfully"}
-
     finally:
-        if video_capture is not None and video_capture.isOpened():
-            video_capture.release()
-        cv2.destroyAllWindows()
+        return
 
 
 @app.delete("/unenroll/{username}")
@@ -210,8 +209,7 @@ async def update_user(
         username: str,
         email: str = Form(...),
         password: str = Form(None),
-        token: str = Depends(oauth2_scheme)
-):
+        token: str = Depends(oauth2_scheme)):
     db: Session = SessionLocal()
     current_user = decode_token(token)
 
@@ -226,7 +224,7 @@ async def update_user(
     user_to_update.username = username
     user_to_update.email = email
     if password:
-        user_to_update.password = hash_password(password)  # Hash new password
+        user_to_update.password = hash_password(password)
 
     db.commit()
     return {
@@ -245,21 +243,22 @@ async def update_user(
 
 @app.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    db: Session = SessionLocal()
-    db_user = db.query(User).filter(User.username == form_data.username).first()
-
-    if not db_user:
-        raise HTTPException(status_code=400, detail="User not enrolled")
-
-    if not verify_password(form_data.password, db_user.password):
-        raise HTTPException(status_code=400, detail="Incorrect password")
-
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": db_user.username}, expires_delta=access_token_expires
-    )
-
-    return {"access_token": access_token, "token_type": "bearer"}
+    # db: Session = SessionLocal()
+    # db_user = db.query(User).filter(User.username == form_data.username).first()
+    #
+    # if not db_user:
+    #     raise HTTPException(status_code=400, detail="User not enrolled")
+    #
+    # if not verify_password(form_data.password, db_user.password):
+    #     raise HTTPException(status_code=400, detail="Incorrect password")
+    #
+    # access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    # access_token = create_access_token(
+    #     data={"sub": db_user.username}, expires_delta=access_token_expires
+    # )
+    #
+    # return {"access_token": access_token, "token_type": "bearer"}
+    return {'data': 123456}
 
 
 #################################################################################
@@ -414,9 +413,7 @@ async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
 # app = FastAPI()
 
 
-# @app.get("/")
-# async def root():
-#     return {"message": "Welcome to the Face Recognition API"}
+
 
 
 # oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
