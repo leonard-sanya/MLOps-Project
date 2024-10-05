@@ -188,8 +188,8 @@ async def enroll(
         cv2.destroyAllWindows()
 
 
-@app.delete("/unenroll/{username}")
-async def unenroll_user(username: str, token: str = Depends(oauth2_scheme)):
+@app.delete("/unenroll")
+async def unenroll_user(username: str=Form(...), token: str = Depends(oauth2_scheme)):
     db: Session = SessionLocal()
     current_user = decode_token(token)
 
@@ -206,9 +206,9 @@ async def unenroll_user(username: str, token: str = Depends(oauth2_scheme)):
     return {"message": f"{username} has been unenrolled successfully"}
 
 
-@app.put("/user/{username}")
+@app.put("/user")
 async def update_user(
-        username: str,
+        username: str=Form(...),
         email: str = Form(...),
         password: str = Form(None),
         token: str = Depends(oauth2_scheme)
@@ -334,7 +334,8 @@ async def face_recognition_endpoint(token: str = Depends(oauth2_scheme)):
 
     video_capture.release()
     cv2.destroyAllWindows()
+    return {'users_recognized': recognized_users}
 
-    return StreamingResponse(img_bytes, media_type="image/jpeg",
-                             headers={"X-Recognized-Users": ', '.join(recognized_users)})
+    # return StreamingResponse(img_bytes, media_type="image/jpeg",
+    #                          headers={"X-Recognized-Users": ', '.join(recognized_users)})
 
