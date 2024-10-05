@@ -38,13 +38,13 @@ jobs:
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
       with:
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        project_id: ${{ secrets.GCP_APP_CREDENTIALS }}
         service_account_key: ${{ secrets.GCP_APP_CREDENTIALS }}
 
     - name: Deploy to Cloud Run
       run: |
         gcloud run deploy facerecognition \
-        --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/facerecognition:${{ github.sha }} \
+        --image gcr.io/${{ secrets.GCP_APP_CREDENTIALS }}/facerecognition:${{ github.sha }} \
         --platform managed \
-        --region ${{ secrets.GCP_REGION }} \
+        --region ${{ secrets.GCP_APP_CREDENTIALS }} \
         --allow-unauthenticated
