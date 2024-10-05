@@ -1,3 +1,5 @@
+import io
+
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Form
 from mysql.connector import connect
 from sqlalchemy import create_engine, Column, Integer, String, LargeBinary, INT
@@ -139,7 +141,8 @@ async def enroll(
         username: str = Form(...),
         email: str = Form(...),
         password: str = Form(...),
-        is_admin: int = Form(0)):
+        is_admin: int = Form(0),
+        image: UploadFile = File()):
     if is_admin == 1:
         raise HTTPException(status_code=403, detail="Admin account cannot be enrolled.")
 
@@ -151,19 +154,22 @@ async def enroll(
         if db_user:
             raise HTTPException(status_code=400, detail="Username already registered")
 
-        video_capture = cv2.VideoCapture(0)
+        image_data = await image.read()
+        image_stream = io.BytesIO(image_data)
+        pil_image = Image.open(image_stream)
+        rgb_frame = np.array(pil_image)
 
-        if not video_capture.isOpened():
-            raise HTTPException(status_code=500, detail="Could not access the camera.")
-
-        print("Please focus on the camera. The image will be captured in 5 seconds...")
-        time.sleep(5)
-
-        ret, frame = video_capture.read()
-        if not ret:
-            raise HTTPException(status_code=500, detail="Could not capture an image.")
-
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # if not video_capture.isOpened():
+        #     raise HTTPException(status_code=500, detail="Could not access the camera.")
+        #
+        # print("Please focus on the camera. The image will be captured in 5 seconds...")
+        # time.sleep(5)
+        #
+        # ret, frame = video_capture.read()
+        # if not ret:
+        #     raise HTTPException(status_code=500, detail="Could not capture an image.")
+        #
+        # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         face_locations = face_recognition.face_locations(rgb_frame)
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
