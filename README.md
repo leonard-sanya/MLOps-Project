@@ -2,17 +2,17 @@
 
 ## Project 1: Face Recognition
 
-In this project, we will be focusing on MLOps by building a face recognition system. The objective of the project is to be able users to enrol into the system and have their face pictures taken and the next time they log in, their faces will be verified first before being given access. We used a pretrained model from the MTCNN library.
+In this project, we focus on MLOps by developing a face recognition system. The objective is to allow users to enroll in the system by taking a photograph of their face. During subsequent logins, their faces will be verified before granting access. We will utilize a pre-trained model from the MTCNN library for this purpose.
 
 ## User Instructions
 - Create a new folder face-recognition-system
 - Clone the GitHub repository
-git clone < paste the url here>
+git clone < paste the url here >
 cd face-recognition-system
 - Create a virtual environment
   * Install the virtual environment: pip install virtualenv
-  * run: python -m <your-virtual-env-name>
-  * Activate your virtual environment: source <your-virtual-env-name>/bin/activate # (On windows use) <your-virtual-env-name>\Scripts\activate
+  * run: python -m < your-virtual-env-name >
+  * Activate your virtual environment: source < your-virtual-env-name >/bin/activate # (On windows use) < your-virtual-env-name >\Scripts\activate
   * To deactivate the virtual environment, run: deactivate
 - Run the requirements.txt file as it contains the Python dependencies that we will need for the project.
   * run: pip install -r requirements.txt
