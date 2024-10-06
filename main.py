@@ -156,7 +156,6 @@ async def enroll(
         raise HTTPException(status_code=403, detail="Admin account cannot be enrolled.")
 
     db: Session = SessionLocal()
-    video_capture = None
 
     try:
         db_user = db.query(User).filter(User.username == username).first()
@@ -167,18 +166,6 @@ async def enroll(
         image_stream = io.BytesIO(image_data)
         pil_image = Image.open(image_stream)
         rgb_frame = np.array(pil_image)
-
-        # if not video_capture.isOpened():
-        #     raise HTTPException(status_code=500, detail="Could not access the camera.")
-        #
-        # print("Please focus on the camera. The image will be captured in 5 seconds...")
-        # time.sleep(5)
-        #
-        # ret, frame = video_capture.read()
-        # if not ret:
-        #     raise HTTPException(status_code=500, detail="Could not capture an image.")
-        #
-        # rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         face_locations = face_recognition.face_locations(rgb_frame)
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
@@ -261,7 +248,7 @@ async def update_user(
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     db: Session = SessionLocal()
     db_user = db.query(User).filter(User.username == form_data.username).first()
-
+    email = db_user.email
     if not db_user:
         raise HTTPException(status_code=400, detail="User not enrolled")
 
