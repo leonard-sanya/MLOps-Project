@@ -42,7 +42,6 @@ cursor = conn.cursor()
 app = FastAPI()
 
 DATABASE_URL = f"mysql+mysqldb://{db_username}:{db_password}@{db_host}:3306/{db_name}"
-print(db_host)
 
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
@@ -303,7 +302,6 @@ async def face_recognition_endpoint(image: UploadFile = File()):
             # Load the stored face encoding and compare with the current face encoding
             stored_encoding = np.frombuffer(user.face_encoding, dtype=np.float64)
             matches = face_recognition.compare_faces([stored_encoding], face_encoding)
-
             if matches[0]:
                 recognized_users.append(user.username)
 
@@ -339,4 +337,4 @@ async def face_recognition_endpoint(image: UploadFile = File()):
     # _, img_encoded = cv2.imencode('.jpg', cv2.cvtColor(img_with_dets, cv2.COLOR_RGB2BGR))
     # img_bytes = BytesIO(img_encoded.tobytes())
 
-    return {'users': recognized_users}
+    return {'recognized': 1} if len(recognized_users) else {'recognized': 0}
