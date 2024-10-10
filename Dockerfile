@@ -23,7 +23,7 @@ WORKDIR /code
 COPY ./requirements.txt /code/requirements.txt
 
 # Install dependencies
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+RUN  pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 # Copy the app directory contents to the working directory
 COPY ./main.py /code/main.py
@@ -31,5 +31,5 @@ COPY ./main.py /code/main.py
 # Expose port 80
 EXPOSE 8000
 
-# Run the FastAPI application using Uvicorn
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
