@@ -68,6 +68,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100)),
     username = Column(String(10), unique=True, index=True)
     email = Column(String(35), unique=True, index=True)
     password = Column(String(100))
@@ -134,7 +135,7 @@ def create_admin_user():
         hashed_password = hash_password(admin_password)
         admin_user = User(
             username=admin_username,
-            email="admin@example.com",
+            email="ignatiusboadi@gmail.com",
             password=hashed_password,
             is_admin=1
         )
@@ -148,6 +149,7 @@ create_admin_user()
 
 @app.post("/enroll")
 async def enroll(
+        name: str = Form(...),
         username: str = Form(...),
         email: str = Form(...),
         password: str = Form(...),
@@ -178,7 +180,7 @@ async def enroll(
 
         hashed_password = hash_password(password)
 
-        user = User(username=username, email=email, password=hashed_password, face_encoding=face_encoding.tobytes())
+        user = User(name=name, username=username, email=email, password=hashed_password, face_encoding=face_encoding.tobytes())
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -209,7 +211,8 @@ async def unenroll_user(username: str=Form(...), token: str = Depends(oauth2_sch
 
 @app.put("/user")
 async def update_user(
-        username: str=Form(...),
+        name: str = Form(...),
+        username: str = Form(...),
         email: str = Form(...),
         password: str = Form(None),
         token: str = Depends(oauth2_scheme)
@@ -225,8 +228,12 @@ async def update_user(
     if not user_to_update:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user_to_update.username = username
-    user_to_update.email = email
+    if name:
+        user_to_update.name = name
+    if username:
+        user_to_update.username = username
+    if email:
+        user_to_update.email = email
     if password:
         user_to_update.password = hash_password(password)
 
@@ -234,6 +241,7 @@ async def update_user(
     return {
         "message": f"User {username} updated successfully",
         "user": {
+            "name": user_to_update.name,
             "username": user_to_update.username,
             "email": user_to_update.email,
             "is_admin": user_to_update.is_admin
@@ -241,14 +249,11 @@ async def update_user(
     }
 
 
-#################################################################################
-# USER LOG IN
-#################################################################################
-
 @app.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     db: Session = SessionLocal()
     db_user = db.query(User).filter(User.username == form_data.username).first()
+    name = db_user.name
     email = db_user.email
     if not db_user:
         raise HTTPException(status_code=400, detail="User not enrolled")
@@ -261,7 +266,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         data={"sub": db_user.username}, expires_delta=access_token_expires
     )
     yag = yagmail.SMTP('ammi.mlops.group1@gmail.com', 'pktwlpqogrkotiyg')
-    message = f'''Dear User,
+    message = f'''Dear {name.split()[0]},
                 Kindly find below the bearer token for you to access
                 {access_token}
 
@@ -272,33 +277,25 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-#################################################################################
-# USER FACE RECOGNITION
-#################################################################################
 @app.post("/face_recognition")
 async def face_recognition_endpoint(image: UploadFile = File()):
-    # Read the uploaded image file contents
     db: Session = SessionLocal()
     image_bytes = await image.read()
 
-    # Convert the uploaded image bytes to a numpy array
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
     if img is None:
         raise HTTPException(status_code=400, detail="Invalid image file.")
 
-    # Convert image to RGB format for face recognition
     rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    # Detect face locations and encodings
     face_locations = face_recognition.face_locations(rgb_img)
     face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
 
     if not face_locations:
         return {"message": "No face detected in the image."}
 
-    # Query the database to retrieve all users
     users = db.query(User).all()
 
     recognized_users = []
@@ -308,7 +305,6 @@ async def face_recognition_endpoint(image: UploadFile = File()):
             if user.face_encoding is None:
                 continue
 
-            # Load the stored face encoding and compare with the current face encoding
             stored_encoding = np.frombuffer(user.face_encoding, dtype=np.float64)
             matches = face_recognition.compare_faces([stored_encoding], face_encoding)
             if matches[0]:
