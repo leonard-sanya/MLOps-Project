@@ -68,7 +68,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100)),
+    name = Column(String(100))
     username = Column(String(10), unique=True, index=True)
     email = Column(String(35), unique=True, index=True)
     password = Column(String(100))
