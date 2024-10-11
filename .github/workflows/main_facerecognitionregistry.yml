@@ -28,6 +28,7 @@ jobs:
       - name: Configure Docker
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Build and Push Docker Image
         run: |
