@@ -31,7 +31,7 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t ${{ secrets.GCP_IMAGE_URL }}:latest -f Dockerfile.prod .
+          docker build -t ${{ secrets.GCP_IMAGE_URL }}:latest .
           docker push ${{ secrets.GCP_IMAGE_URL }}:latest
 
       - name: Deploy to Cloud Run
