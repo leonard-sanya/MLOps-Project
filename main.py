@@ -1,27 +1,22 @@
-import io
-
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Form
-from mysql.connector import connect
-from sqlalchemy import create_engine, Column, Integer, String, LargeBinary, INT
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
-import numpy as np
-import os
-import face_recognition
-import time
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from fastapi.responses import StreamingResponse
-from io import BytesIO
-from PIL import Image
-from mtcnn import MTCNN
-from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from datetime import datetime, timedelta, timezone
+from mysql.connector import connect
+from passlib.context import CryptContext
+from PIL import Image
+from pydantic import BaseModel
+from sqlalchemy import create_engine, Column, Integer, String, LargeBinary, INT
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 import cv2
+import face_recognition
+import io
+import numpy as np
+import os
 import yagmail
 
 load_dotenv()
@@ -42,7 +37,6 @@ cursor = conn.cursor()
 
 app = FastAPI()
 
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8050"],
@@ -52,21 +46,19 @@ app.add_middleware(
 )
 
 DATABASE_URL = f"mysql+mysqldb://{db_username}:{db_password}@{db_host}:3306/{db_name}"
-
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 SECRET_KEY = "your-secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+Base.metadata.create_all(bind=engine)
 
 
 class User(Base):
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100))
     username = Column(String(10), unique=True, index=True)
@@ -74,9 +66,6 @@ class User(Base):
     password = Column(String(100))
     face_encoding = Column(LargeBinary)
     is_admin = Column(INT)
-
-
-Base.metadata.create_all(bind=engine)
 
 
 class UserCreate(BaseModel):
@@ -98,9 +87,6 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
-
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
@@ -179,10 +165,10 @@ async def enroll(
             raise HTTPException(status_code=400, detail="No face detected in the image.")
 
         face_encoding = face_encodings[0]
-
         hashed_password = hash_password(password)
 
-        user = User(name=name, username=username, email=email, password=hashed_password, face_encoding=face_encoding.tobytes())
+        user = User(name=name, username=username, email=email, password=hashed_password,
+                    face_encoding=face_encoding.tobytes())
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -194,7 +180,7 @@ async def enroll(
 
 
 @app.delete("/unenroll")
-async def unenroll_user(username: str=Form(...), token: str = Depends(oauth2_scheme)):
+async def unenroll_user(username: str = Form(...), token: str = Depends(oauth2_scheme)):
     db: Session = SessionLocal()
     current_user = decode_token(token)
 
@@ -205,17 +191,16 @@ async def unenroll_user(username: str=Form(...), token: str = Depends(oauth2_sch
     user_to_unenroll = db.query(User).filter(User.username == username).first()
     if not user_to_unenroll:
         raise HTTPException(status_code=404, detail="User not found")
-
-    user_to_unenroll.face_encoding = None
+    db.delete(user_to_unenroll)
     db.commit()
     return {"message": f"{username} has been unenrolled successfully"}
 
 
-@app.put("/user")
+@app.put("/update")
 async def update_user(
-        name: str = Form(...),
-        username: str = Form(...),
-        email: str = Form(...),
+        name: str = Form(None),
+        username: str = Form(None),
+        email: str = Form(None),
         password: str = Form(None),
         token: str = Depends(oauth2_scheme)
 ):
@@ -241,14 +226,7 @@ async def update_user(
 
     db.commit()
     return {
-        "message": f"User {username} updated successfully",
-        "user": {
-            "name": user_to_update.name,
-            "username": user_to_update.username,
-            "email": user_to_update.email,
-            "is_admin": user_to_update.is_admin
-        }
-    }
+        "message": f"User {username} updated successfully"}
 
 
 @app.post("/token")
