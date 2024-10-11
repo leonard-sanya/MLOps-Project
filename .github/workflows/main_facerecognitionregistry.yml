@@ -37,9 +37,11 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          echo SERVICE_NAME $face-recognition
-          gcloud run deploy $face-recognition \
+          gcloud run deploy face-recognition \
             --image ${{ secrets.GCP_IMAGE_URL }}:latest \
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated
+          
+          
+# gcloud run deploy --image=us-central1-docker.pkg.dev/face-recognition-438311/face-recognition-docker-repo/face-recognition-image:tag1
