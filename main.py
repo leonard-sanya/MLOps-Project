@@ -127,6 +127,7 @@ def decode_token(token: str) -> str:
 
 def create_admin_user():
     db: Session = SessionLocal()
+    admin_name = "Administrator"
     admin_username = "admin"
     admin_password = "admin_password"
 
@@ -134,6 +135,7 @@ def create_admin_user():
     if not db_user:
         hashed_password = hash_password(admin_password)
         admin_user = User(
+            name=admin_name,
             username=admin_username,
             email="ignatiusboadi@gmail.com",
             password=hashed_password,
