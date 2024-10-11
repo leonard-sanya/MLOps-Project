@@ -145,7 +145,7 @@ async def enroll(
         image: UploadFile = File()):
     if is_admin == 1:
         raise HTTPException(status_code=403, detail="Admin account cannot be enrolled.")
-
+    print('requests received')
     db: Session = SessionLocal()
 
     try:
@@ -199,7 +199,7 @@ async def unenroll_user(username: str=Form(...), token: str = Depends(oauth2_sch
 
 @app.put("/user")
 async def update_user(
-        username: str=Form(...),
+        username: str = Form(...),
         email: str = Form(...),
         password: str = Form(None),
         token: str = Depends(oauth2_scheme)
@@ -209,10 +209,12 @@ async def update_user(
 
     db_user = db.query(User).filter(User.username == current_user).first()
     if not db_user or db_user.is_admin != 1:
+        print('403')
         raise HTTPException(status_code=403, detail="Not authorized to perform this action")
 
     user_to_update = db.query(User).filter(User.username == username).first()
     if not user_to_update:
+        print(404)
         raise HTTPException(status_code=404, detail="User not found")
 
     user_to_update.username = username
@@ -221,6 +223,7 @@ async def update_user(
         user_to_update.password = hash_password(password)  # Hash new password
 
     db.commit()
+    print('committed')
     return {
         "message": f"User {username} updated successfully",
         "user": {
@@ -240,7 +243,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     db: Session = SessionLocal()
     db_user = db.query(User).filter(User.username == form_data.username).first()
     email = db_user.email
-
+    print('token initialized')
     if not db_user:
         raise HTTPException(status_code=400, detail="User not enrolled")
 
