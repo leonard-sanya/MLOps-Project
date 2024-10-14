@@ -151,7 +151,8 @@ async def enroll(
     try:
         db_user = db.query(User).filter(User.username == username).first()
         if db_user:
-            raise HTTPException(status_code=400, detail="Username already registered")
+            return {'message': "Username already exists, it must be unique."}
+            # raise HTTPException(status_code=400, detail="Username already registered")
 
         image_data = await image.read()
         image_stream = io.BytesIO(image_data)
@@ -162,7 +163,8 @@ async def enroll(
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
         if not face_encodings:
-            raise HTTPException(status_code=400, detail="No face detected in the image.")
+            return {'message': 'No face detected in image.'}
+            # raise HTTPException(status_code=400, detail="No face detected in the image.")
 
         face_encoding = face_encodings[0]
         hashed_password = hash_password(password)
@@ -186,11 +188,13 @@ async def unenroll_user(username: str = Form(...), token: str = Depends(oauth2_s
 
     db_user = db.query(User).filter(User.username == current_user).first()
     if not db_user or db_user.is_admin != 1:
-        raise HTTPException(status_code=403, detail="Not authorized to perform this action")
+        return {'message': "You are not authorized to perform this action. Only admins can do delete users."}
+        # raise HTTPException(status_code=403, detail="Not authorized to perform this action")
 
     user_to_unenroll = db.query(User).filter(User.username == username).first()
     if not user_to_unenroll:
-        raise HTTPException(status_code=404, detail="User not found")
+        return {'message': 'Username not found.'}
+        # raise HTTPException(status_code=404, detail="User not found")
     db.delete(user_to_unenroll)
     db.commit()
     return {"message": f"{username} has been unenrolled successfully"}
@@ -209,11 +213,13 @@ async def update_user(
 
     db_user = db.query(User).filter(User.username == current_user).first()
     if not db_user or db_user.is_admin != 1:
-        raise HTTPException(status_code=403, detail="Not authorized to perform this action")
+        return {'message': 'You are not authorized to perform this action. Only admins can perform updates.'}
+        # raise HTTPException(status_code=403, detail="Not authorized to perform this action")
 
     user_to_update = db.query(User).filter(User.username == username).first()
     if not user_to_update:
-        raise HTTPException(status_code=404, detail="User not found")
+        return {'message': 'Username not found'}
+        # raise HTTPException(status_code=404, detail="User not found")
 
     if name:
         user_to_update.name = name
@@ -236,10 +242,12 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     name = db_user.name
     email = db_user.email
     if not db_user:
-        raise HTTPException(status_code=400, detail="User not enrolled")
+        return {'message': 'User not enrolled.'}
+        # raise HTTPException(status_code=400, detail="User not enrolled")
 
     if not verify_password(form_data.password, db_user.password):
-        raise HTTPException(status_code=400, detail="Incorrect password")
+        return {'message': 'Incorrect password.'}
+        # raise HTTPException(status_code=400, detail="Incorrect password")
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -254,7 +262,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
                 Group 1'''
     yag.send(email, f'Bearer token', message)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"message": 'Token generated and sent to registered email.', "access_token": access_token,
+            "token_type": "bearer"}
 
 
 @app.post("/face_recognition")
@@ -266,7 +275,8 @@ async def face_recognition_endpoint(image: UploadFile = File()):
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
     if img is None:
-        raise HTTPException(status_code=400, detail="Invalid image file.")
+        return {'message': "Invalid image file."}
+        # raise HTTPException(status_code=400, detail="Invalid image file.")
 
     rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -322,4 +332,4 @@ async def face_recognition_endpoint(image: UploadFile = File()):
     # _, img_encoded = cv2.imencode('.jpg', cv2.cvtColor(img_with_dets, cv2.COLOR_RGB2BGR))
     # img_bytes = BytesIO(img_encoded.tobytes())
 
-    return {'recognized': 1} if len(recognized_users) else {'recognized': 0}
+    return {'message': 1} if len(recognized_users) else {'message': 0}
