@@ -54,7 +54,7 @@ jobs:
             --image "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}" \
             --platform managed \
             --region us-central1 \
-            --allow-unauthenticated
+            --allow-unauthenticated \
             --set-secrets=GOOGLE_APPLICATION_CREDENTIALS=brain_data:latest \
             --set-env-vars DB_USERNAME=${{ secrets.DB_USERNAME }} \
             --set-env-vars DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
