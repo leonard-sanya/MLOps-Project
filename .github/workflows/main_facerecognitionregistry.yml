@@ -40,21 +40,13 @@ jobs:
           docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}" ./
           docker push "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}"
 
-      # - name: 'Deploy to Cloud Run'
-      #   id: deploy
-      #   uses: 'google-github-actions/deploy-cloudrun@v2'
-      #   with:
-      #     service: '${{ env.SERVICE }}'
-      #     region: '${{ env.REGION }}'
-      #     image: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}"
-      #     port: 8000
       -  name: 'Deploy to Cloud Run'
          run:  |
            gcloud run deploy face-recognition-app \
             --image "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}" \
             --platform managed \
             --region us-central1 \
-            --allow-unauthenticated
+            --allow-unauthenticated \
             --set-secrets=GOOGLE_APPLICATION_CREDENTIALS=brain_data:latest \
             --set-env-vars DB_USERNAME=${{ secrets.DB_USERNAME }} \
             --set-env-vars DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
@@ -63,9 +55,6 @@ jobs:
             --set-env-vars CONNECTION_NAME=${{ secrets.CONNECTION_NAME }}\
             --memory 8Gi \
             --cpu 2
-          
-          
-# gcloud run deploy --image=us-central1-docker.pkg.dev/face-recognition-438311/face-recognition-docker-repo/face-recognition-image:tag1
 
       - name: 'Show output'
         run: echo ${{ steps.deploy.outputs.url }}
