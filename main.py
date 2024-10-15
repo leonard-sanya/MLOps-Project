@@ -4,6 +4,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
+from mtcnn import MTCNN
 from mysql.connector import connect
 from passlib.context import CryptContext
 from PIL import Image
@@ -37,13 +38,13 @@ cursor = conn.cursor()
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:8050"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["http://localhost:8050"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 DATABASE_URL = f"mysql+mysqldb://{db_username}:{db_password}@{db_host}:3306/{db_name}"
 Base = declarative_base()
@@ -129,7 +130,6 @@ def create_admin_user():
         )
         db.add(admin_user)
         db.commit()
-        print("Admin user created successfully.")
 
 
 create_admin_user()
@@ -143,6 +143,7 @@ async def enroll(
         password: str = Form(...),
         is_admin: int = Form(0),
         image: UploadFile = File()):
+
     if is_admin == 1:
         raise HTTPException(status_code=403, detail="Admin account cannot be enrolled.")
 
@@ -151,8 +152,7 @@ async def enroll(
     try:
         db_user = db.query(User).filter(User.username == username).first()
         if db_user:
-            return {'message': "Username already exists, it must be unique."}
-            # raise HTTPException(status_code=400, detail="Username already registered")
+            raise HTTPException(status_code=400, detail="Username already registered")
 
         image_data = await image.read()
         image_stream = io.BytesIO(image_data)
@@ -163,41 +163,66 @@ async def enroll(
         face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
         if not face_encodings:
-            return {'message': 'No face detected in image.'}
-            # raise HTTPException(status_code=400, detail="No face detected in the image.")
+            raise HTTPException(status_code=400, detail="No face detected in the image.")
 
         face_encoding = face_encodings[0]
+
         hashed_password = hash_password(password)
 
-        user = User(name=name, username=username, email=email, password=hashed_password,
-                    face_encoding=face_encoding.tobytes())
+        user = User(
+            name=name,
+            username=username,
+            email=email,
+            password=hashed_password,
+            is_admin=is_admin,
+            face_encoding=face_encoding.tobytes()
+        )
+
         db.add(user)
         db.commit()
         db.refresh(user)
 
         return {"message": "User enrolled successfully"}
 
+    except HTTPException as e:
+        raise e
+
     except Exception as e:
-        return {'message': f'{type(e).__name__}'}
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"An error occurred: {type(e).__name__}")
+
+    finally:
+        db.close()
 
 
 @app.delete("/unenroll")
 async def unenroll_user(username: str = Form(...), token: str = Depends(oauth2_scheme)):
     db: Session = SessionLocal()
-    current_user = decode_token(token)
+    try:
+        current_user = decode_token(token)
 
-    db_user = db.query(User).filter(User.username == current_user).first()
-    if not db_user or db_user.is_admin != 1:
-        return {'message': "You are not authorized to perform this action. Only admins can do delete users."}
-        # raise HTTPException(status_code=403, detail="Not authorized to perform this action")
+        db_user = db.query(User).filter(User.username == current_user).first()
+        if not db_user or db_user.is_admin != 1:
+            raise HTTPException(status_code=403, detail="You are not authorized to perform this action. Only admins can delete users.")
 
-    user_to_unenroll = db.query(User).filter(User.username == username).first()
-    if not user_to_unenroll:
-        return {'message': 'Username not found.'}
-        # raise HTTPException(status_code=404, detail="User not found")
-    db.delete(user_to_unenroll)
-    db.commit()
-    return {"message": f"{username} has been unenrolled successfully"}
+        user_to_unenroll = db.query(User).filter(User.username == username).first()
+        if not user_to_unenroll:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        db.delete(user_to_unenroll)
+        db.commit()
+
+        return {"message": f"{username} has been unenrolled successfully"}
+
+    except HTTPException as http_err:
+        raise http_err
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="An error occurred during unenrollment.")
+
+    finally:
+        db.close()
 
 
 @app.put("/update")
@@ -209,30 +234,39 @@ async def update_user(
         token: str = Depends(oauth2_scheme)
 ):
     db: Session = SessionLocal()
-    current_user = decode_token(token)
 
-    db_user = db.query(User).filter(User.username == current_user).first()
-    if not db_user or db_user.is_admin != 1:
-        return {'message': 'You are not authorized to perform this action. Only admins can perform updates.'}
-        # raise HTTPException(status_code=403, detail="Not authorized to perform this action")
+    try:
+        current_user = decode_token(token)
+        db_user = db.query(User).filter(User.username == current_user).first()
+        if not db_user or db_user.is_admin != 1:
+            raise HTTPException(status_code=403,
+                                detail="You are not authorized to perform this action. Only admins can perform updates.")
 
-    user_to_update = db.query(User).filter(User.username == username).first()
-    if not user_to_update:
-        return {'message': 'Username not found'}
-        # raise HTTPException(status_code=404, detail="User not found")
+        user_to_update = db.query(User).filter(User.username == username).first()
+        if not user_to_update:
+            raise HTTPException(status_code=404, detail="Username not found")
 
-    if name:
-        user_to_update.name = name
-    if username:
-        user_to_update.username = username
-    if email:
-        user_to_update.email = email
-    if password:
-        user_to_update.password = hash_password(password)
+        if name:
+            user_to_update.name = name
+        if username:
+            user_to_update.username = username
+        if email:
+            user_to_update.email = email
+        if password:
+            user_to_update.password = hash_password(password)
 
-    db.commit()
-    return {
-        "message": f"User {username} updated successfully"}
+        db.commit()
+        return {"message": f"User {username} updated successfully"}
+
+    except HTTPException as http_err:
+        raise http_err
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"An error occurred: {type(e).__name__}")
+
+    finally:
+        db.close()
 
 
 @app.post("/token")
@@ -242,12 +276,12 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     name = db_user.name
     email = db_user.email
     if not db_user:
-        return {'message': 'User not enrolled.'}
-        # raise HTTPException(status_code=400, detail="User not enrolled")
+        # return {'message': 'User not enrolled.'}
+        raise HTTPException(status_code=400, detail="User not enrolled")
 
     if not verify_password(form_data.password, db_user.password):
-        return {'message': 'Incorrect password.'}
-        # raise HTTPException(status_code=400, detail="Incorrect password")
+        # return {'message': 'Incorrect password.'}
+        raise HTTPException(status_code=400, detail="Incorrect password")
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -255,7 +289,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     )
     yag = yagmail.SMTP('ammi.mlops.group1@gmail.com', 'pktwlpqogrkotiyg')
     message = f'''Dear {name.split()[0]},
-                Kindly find below the bearer token for you to access
+                Kindly find below the bearer token for you to access.
+                
                 {access_token}
 
                 Kindest regards,
@@ -269,67 +304,42 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 @app.post("/face_recognition")
 async def face_recognition_endpoint(image: UploadFile = File()):
     db: Session = SessionLocal()
-    image_bytes = await image.read()
 
-    nparr = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    try:
+        image_bytes = await image.read()
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-    if img is None:
-        return {'message': "Invalid image file."}
-        # raise HTTPException(status_code=400, detail="Invalid image file.")
+        if img is None:
+            raise HTTPException(status_code=400, detail="Invalid image file.")
 
-    rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        face_locations = face_recognition.face_locations(rgb_img)
+        face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
 
-    face_locations = face_recognition.face_locations(rgb_img)
-    face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
+        if not face_locations:
+            raise HTTPException(status_code=400, detail="No face detected in the image.")
 
-    if not face_locations:
-        return {"message": "No face detected in the image."}
+        users = db.query(User).all()
+        recognized_users = []
 
-    users = db.query(User).all()
+        for face_encoding in face_encodings:
+            for user in users:
+                if user.face_encoding is None:
+                    continue
+                stored_encoding = np.frombuffer(user.face_encoding, dtype=np.float64)
+                matches = face_recognition.compare_faces([stored_encoding], face_encoding, tolerance=0.4)
+                if matches[0]:
+                    recognized_users.append(user.username)
 
-    recognized_users = []
+        return {'message': 1} if len(recognized_users) else {'message': 0}
 
-    for face_encoding in face_encodings:
-        for user in users:
-            if user.face_encoding is None:
-                continue
+    except HTTPException as http_err:
+        raise http_err
 
-            stored_encoding = np.frombuffer(user.face_encoding, dtype=np.float64)
-            matches = face_recognition.compare_faces([stored_encoding], face_encoding)
-            if matches[0]:
-                recognized_users.append(user.username)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {type(e).__name__}")
 
-    # Use MTCNN to detect faces in the image
-    # detector = MTCNN()
-    # detections = detector.detect_faces(rgb_img)
-    #
-    # if not detections:
-    #     raise HTTPException(status_code=400, detail="No faces detected in the image.")
-    #
-    # # Draw boxes and keypoints around the faces in the image
-    # img_with_dets = rgb_img.copy()
-    # min_conf = 0.9
-    #
-    # box_color = (255, 0, 0)
-    # box_thickness = 3
-    # dot_color = (0, 255, 0)
-    # dot_size = 6
-    #
-    # for det in detections:
-    #     if det['confidence'] >= min_conf:
-    #         x, y, width, height = det['box']
-    #         keypoints = det['keypoints']
-    #
-    #         cv2.rectangle(img_with_dets, (x, y), (x + width, y + height), box_color, box_thickness)
-    #         cv2.circle(img_with_dets, keypoints['left_eye'], dot_size, dot_color, -1)
-    #         cv2.circle(img_with_dets, keypoints['right_eye'], dot_size, dot_color, -1)
-    #         cv2.circle(img_with_dets, keypoints['nose'], dot_size, dot_color, -1)
-    #         cv2.circle(img_with_dets, keypoints['mouth_left'], dot_size, dot_color, -1)
-    #         cv2.circle(img_with_dets, keypoints['mouth_right'], dot_size, dot_color, -1)
-    #
-    # # Encode the image with detections to JPEG format
-    # _, img_encoded = cv2.imencode('.jpg', cv2.cvtColor(img_with_dets, cv2.COLOR_RGB2BGR))
-    # img_bytes = BytesIO(img_encoded.tobytes())
+    finally:
+        db.close()
 
-    return {'message': 1} if len(recognized_users) else {'message': 0}
