@@ -130,7 +130,6 @@ def create_admin_user():
         )
         db.add(admin_user)
         db.commit()
-        print("Admin user created successfully.")
 
 
 create_admin_user()
@@ -144,7 +143,6 @@ async def enroll(
         password: str = Form(...),
         is_admin: int = Form(0),
         image: UploadFile = File()):
-    print('Files received')
 
     if is_admin == 1:
         raise HTTPException(status_code=403, detail="Admin account cannot be enrolled.")
@@ -171,8 +169,6 @@ async def enroll(
 
         hashed_password = hash_password(password)
 
-        print('User details being created...')
-
         user = User(
             name=name,
             username=username,
@@ -186,17 +182,13 @@ async def enroll(
         db.commit()
         db.refresh(user)
 
-        print('User added successfully')
-
         return {"message": "User enrolled successfully"}
 
     except HTTPException as e:
-        print(f'HTTP error: {e.detail}')
         raise e
 
     except Exception as e:
         db.rollback()
-        print(f'Error occurred: {str(e)}')
         raise HTTPException(status_code=500, detail=f"An error occurred: {type(e).__name__}")
 
     finally:
@@ -227,7 +219,6 @@ async def unenroll_user(username: str = Form(...), token: str = Depends(oauth2_s
 
     except Exception as e:
         db.rollback()
-        print(f"Error occurred: {str(e)}")
         raise HTTPException(status_code=500, detail="An error occurred during unenrollment.")
 
     finally:
@@ -298,7 +289,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     )
     yag = yagmail.SMTP('ammi.mlops.group1@gmail.com', 'pktwlpqogrkotiyg')
     message = f'''Dear {name.split()[0]},
-                Kindly find below the bearer token for you to access
+                Kindly find below the bearer token for you to access.
+                
                 {access_token}
 
                 Kindest regards,
@@ -336,16 +328,10 @@ async def face_recognition_endpoint(image: UploadFile = File()):
                 if user.face_encoding is None:
                     continue
                 stored_encoding = np.frombuffer(user.face_encoding, dtype=np.float64)
-                matches = face_recognition.compare_faces([stored_encoding], face_encoding, )
+                matches = face_recognition.compare_faces([stored_encoding], face_encoding, tolerance=0.4)
                 if matches[0]:
                     recognized_users.append(user.username)
 
-        # detector = MTCNN()
-        # detections = detector.detect_faces(rgb_img)
-        #
-        # if not detections:
-        #     raise HTTPException(status_code=400, detail="No faces detected in the image.")
-        print(recognized_users)
         return {'message': 1} if len(recognized_users) else {'message': 0}
 
     except HTTPException as http_err:
