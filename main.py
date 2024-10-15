@@ -42,7 +42,7 @@ cursor = conn.cursor()
 app = FastAPI()
 
 DATABASE_URL = f"mysql+mysqldb://{db_username}:{db_password}@{db_host}:3306/{db_name}"
-
+print(DATABASE_URL)
 Base = declarative_base()
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
