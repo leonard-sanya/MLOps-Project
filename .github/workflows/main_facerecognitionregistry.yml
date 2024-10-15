@@ -40,14 +40,6 @@ jobs:
           docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}" ./
           docker push "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}"
 
-      # - name: 'Deploy to Cloud Run'
-      #   id: deploy
-      #   uses: 'google-github-actions/deploy-cloudrun@v2'
-      #   with:
-      #     service: '${{ env.SERVICE }}'
-      #     region: '${{ env.REGION }}'
-      #     image: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}"
-      #     port: 8000
       -  name: 'Deploy to Cloud Run'
          run:  |
            gcloud run deploy face-recognition-app \
@@ -56,11 +48,7 @@ jobs:
             --region us-central1 \
             --allow-unauthenticated \
             --set-secrets=GOOGLE_APPLICATION_CREDENTIALS=brain_data:latest \
-            --set-env-vars DB_USERNAME=${{ secrets.DB_USERNAME }} \
-            --set-env-vars DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            --set-env-vars IP_ADDRESS=${{ secrets.IP_ADDRESS }} \
-            --set-env-vars DB_NAME=${{ secrets.DB_NAME }} \
-            --set-env-vars CONNECTION_NAME=${{ secrets.CONNECTION_NAME }}\
+            --set-env-vars DB_USERNAME=${{ secrets.DB_USERNAME }}, DB_PASSWORD=${{ secrets.DB_PASSWORD }}, IP_ADDRESS=${{ secrets.IP_ADDRESS }}, DB_NAME=${{ secrets.DB_NAME }}, CONNECTION_NAME=${{ secrets.CONNECTION_NAME }}\
             --memory 8Gi \
             --cpu 2
           
