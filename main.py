@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from mtcnn import MTCNN
 from mysql.connector import connect
 from passlib.context import CryptContext
 from PIL import Image

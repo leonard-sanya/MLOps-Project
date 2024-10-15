@@ -1,52 +1,4 @@
-#name: Deploy to Cloud Run
-#
-#on:
-#  push:
-#    branches:
-#      - main
-#  pull_request:
-#    branches:
-#      - main
-#
-#jobs:
-#  dockerize-and-deploy:
-#    runs-on: ubuntu-latest
-#
-#    steps:
-#      - name: Checkout repository
-#        uses: actions/checkout@v2
-#
-#      - name: Google Cloud Auth
-#        uses: 'google-github-actions/auth@v2'
-#        with:
-#          credentials_json: '${{ secrets.GCP_APP_CREDENTIALS }}'
-#          project_id: ${{ secrets.GCP_PROJECT_ID }}
-#
-#      - name: Set up Cloud SDK
-#        uses: 'google-github-actions/setup-gcloud@v2'
-#
-#      - name: Configure Docker
-#        run: |
-#          gcloud auth configure-docker us-central1-docker.pkg.dev
-##          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
-#
-#      - name: Build and Push Docker Image
-#        run: |
-#          docker build -t ${{ secrets.GCP_IMAGE_URL }}:latest .
-#          docker push ${{ secrets.GCP_IMAGE_URL }}:latest
-#
-#      - name: Deploy to Cloud Run
-#        run: |
-#          gcloud run deploy face-recognition \
-#            --image ${{ secrets.GCP_IMAGE_URL }}:latest \
-#            --platform managed \
-#            --region us-central1 \
-#            --allow-unauthenticated
-#
-#
-## gcloud run deploy --image=us-central1-docker.pkg.dev/face-recognition-438311/face-recognition-docker-repo/face-recognition-image:tag1
-
-name: 'Build and Deploy to Cloud Run'
+name: Deploy to Cloud Run
 
 on:
   push:
@@ -88,14 +40,6 @@ jobs:
           docker build -t "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}" ./
           docker push "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}"
 
-      # - name: 'Deploy to Cloud Run'
-      #   id: deploy
-      #   uses: 'google-github-actions/deploy-cloudrun@v2'
-      #   with:
-      #     service: '${{ env.SERVICE }}'
-      #     region: '${{ env.REGION }}'
-      #     image: "${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.NAME }}/${{ env.SERVICE }}:${{ github.sha }}"
-      #     port: 8000
       -  name: 'Deploy to Cloud Run'
          run:  |
            gcloud run deploy face-recognition-app \
@@ -103,8 +47,14 @@ jobs:
             --platform managed \
             --region us-central1 \
             --allow-unauthenticated \
-           --memory 8Gi
-           --cpu 2
+            --set-secrets=GOOGLE_APPLICATION_CREDENTIALS=brain_data:latest \
+            --set-env-vars DB_USERNAME=${{ secrets.DB_USERNAME }} \
+            --set-env-vars DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            --set-env-vars IP_ADDRESS=${{ secrets.IP_ADDRESS }} \
+            --set-env-vars DB_NAME=${{ secrets.DB_NAME }} \
+            --set-env-vars CONNECTION_NAME=${{ secrets.CONNECTION_NAME }}\
+            --memory 8Gi \
+            --cpu 2
 
       - name: 'Show output'
         run: echo ${{ steps.deploy.outputs.url }}
