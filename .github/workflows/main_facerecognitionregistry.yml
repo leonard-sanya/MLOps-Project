@@ -48,11 +48,11 @@ jobs:
             --region us-central1 \
             --allow-unauthenticated \
             --set-secrets=GOOGLE_APPLICATION_CREDENTIALS=brain_data:latest \
-            --set-env-vars DB_USERNAME=${{ secrets.DB_USERNAME }} \
-            --set-env-vars DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            --set-env-vars IP_ADDRESS=${{ secrets.IP_ADDRESS }} \
-            --set-env-vars DB_NAME=${{ secrets.DB_NAME }} \
-            --set-env-vars CONNECTION_NAME=${{ secrets.CONNECTION_NAME }}\
+            --set-env-vars DB_USERNAME= '${{ secrets.DB_USERNAME }}' \
+            --set-env-vars DB_PASSWORD= '${{ secrets.DB_PASSWORD }}' \
+            --set-env-vars IP_ADDRESS= '${{ secrets.IP_ADDRESS }}' \
+            --set-env-vars DB_NAME= '${{ secrets.DB_NAME }}' \
+            --set-env-vars CONNECTION_NAME= '${{ secrets.CONNECTION_NAME }}'\
             --memory 8Gi \
             --cpu 2
 
