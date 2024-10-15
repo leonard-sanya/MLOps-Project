@@ -8,3 +8,7 @@ venv
 /saved_models
 /focus-surfer.json
 enrolled_images
+cloud-sql-proxy.exe
+cloud_sql_proxy
+dlib-19.24.99-cp312-cp312-win_amd64.whl
+/focus-surfer-435213-g6.json
