@@ -276,12 +276,12 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     name = db_user.name
     email = db_user.email
     if not db_user:
-        return {'message': 'User not enrolled.'}
-        # raise HTTPException(status_code=400, detail="User not enrolled")
+        # return {'message': 'User not enrolled.'}
+        raise HTTPException(status_code=400, detail="User not enrolled")
 
     if not verify_password(form_data.password, db_user.password):
-        return {'message': 'Incorrect password.'}
-        # raise HTTPException(status_code=400, detail="Incorrect password")
+        # return {'message': 'Incorrect password.'}
+        raise HTTPException(status_code=400, detail="Incorrect password")
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
